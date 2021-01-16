@@ -1,0 +1,148 @@
+import random
+import subprocess
+subprocess.Popen('python event.py')
+import discord, hypixel # 'hypixel' is the name of the other Python file, minus the '.py' suffix
+from discord.ext import commands, tasks
+from disputils import BotEmbedPaginator, BotConfirmation, BotMultipleChoice
+
+class MyContext(commands.Context):
+    async def tick(self, value):
+        # reacts to the message with an emoji
+        # depending on whether value is True or False
+        # if its True, it'll add a green check mark
+        # otherwise, it'll add a red cross mark
+        emoji = '\N{WHITE HEAVY CHECK MARK}' if value else '\N{CROSS MARK}'
+        try:
+            # this will react to the command author's message
+            await self.message.add_reaction(emoji)
+        except discord.HTTPException:
+            # sometimes errors occur during this, for example
+            # maybe you dont have permission to do that
+            # we dont mind, so we can just ignore them
+            pass
+
+class MyBot(commands.Bot):
+    async def get_context(self, message, *, cls=MyContext):
+        # when you override this method, you pass your new Context
+        # subclass to the super() method, which tells the bot to
+        # use the new MyContext class
+        return await super().get_context(message, cls=cls)
+
+bot = commands.Bot(command_prefix="/", help_command=None)
+
+client = discord.Client()
+  
+# Bot commands
+
+@bot.command()
+async def level(ctx, name): # The name of this function will be the name of the command. 'ctx' just provides context we can use, and all arguments after that are just arguments sent by the command
+    level = hypixel.get_level(name) # This is a reference the function we just created in hypixel.py
+    if level is None: # Remember back in hypixel.py we returned 'None' if the API couldn't find a player
+        await ctx.send("Player not found! (Make sure to use their **Minecraft** username)") # This just sends a message to the channel the command was sent in from the bot
+    else: # We know that we found a player now because level is not None
+        await ctx.send(f"Level of user {name}: {level}") # This puts the name and level into the message
+
+@bot.command()
+async def ping(ctx):
+    '''
+    Shows the latency of the bot
+    '''
+
+    # Get the latency of the bot
+    latency = bot.latency  # Included in the Discord.py library
+    # Send it to the user
+    await ctx.send(latency)
+
+@bot.command()
+async def echo(ctx, *, content:str):
+    '''
+    lets the user make the bot say a phrase
+    '''
+    
+    await ctx.message.delete()
+    await ctx.send(content)
+
+@bot.command()
+async def count(ctx, *args):
+    '''
+    counts how much words or arguments are in a sentace (testing purposes
+    '''
+    await ctx.send('{} arguments: {}'.format(len(args), ', '.join(args)))
+
+@bot.command()
+async def slap( ctx, member : discord.Member ):
+    '''
+    You can slap a user by doing /slap @user 
+    '''
+    emb = discord.Embed(title=None, description = f"For the whole chat there was a noise from a {ctx.author.mention} slap {member.mention} in the face!", color =0x3498db)
+    await ctx.send( embed = emb )
+
+@bot.command()    
+async def hug(self, ctx):
+    image = r"C:\Users\bower\Desktop\discord bot\image\1.gif"
+    import discord
+    await ctx.send(file=discord.File(image))
+
+@bot.command()
+async def info(ctx, *, member: discord.Member):
+    """Tells you some info about the member."""
+    fmt = '{0} joined on {0.joined_at} and has {1} roles.'
+    await ctx.send(fmt.format(member, len(member.roles)))
+
+@info.error
+async def info_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        await ctx.send('I could not find that member...')
+
+@bot.command()
+async def confirm(ctx):
+    confirmation = BotConfirmation(ctx, 0x012345)
+    await confirmation.confirm("Are you sure?")
+
+    if confirmation.confirmed:
+        await confirmation.update("Confirmed", color=0x55ff55)
+    else:
+        await confirmation.update("Not confirmed", hide_author=True, color=0xff5555)
+
+@bot.command()
+async def choice(ctx):
+    multiple_choice = BotMultipleChoice(ctx, ['one', 'two', 'three', 'four', 'five', 'six'], "Testing stuff")
+    await multiple_choice.run()
+
+    await multiple_choice.quit(multiple_choice.choice)
+
+@bot.command()
+async def help(ctx, args=None):
+    help_embed = discord.Embed(title="My Bot's Help!")
+    command_names_list = [x.name for x in bot.commands]
+
+    # If there are no arguments, just list the commands:
+    if not args:
+        help_embed.add_field(
+            name="List of supported commands:",
+            value="\n".join([str(i+1)+". "+x.name for i,x in enumerate(bot.commands)]),
+            inline=False
+        )
+        help_embed.add_field(
+            name="Details",
+            value="Type `/help <command name>` for more details about each command.",
+            inline=False
+        )
+
+    # If the argument is a command, get the help text from that command:
+    elif args in command_names_list:
+        help_embed.add_field(
+            name=args,
+            value=bot.get_command(args).help
+        )
+
+    # If someone is just trolling:
+    else:
+        help_embed.add_field(
+            name="Nope.",
+            value="Don't think I got that command, boss!"
+        )
+
+    await ctx.send(embed=help_embed)
+
+bot.run("Nzk3NTkyMTQ5Mjk0MTg2NTM2.X_otkg.Nnz3x7ZKpRrvYuQjk0fLLDUsiCc")
